@@ -46,9 +46,8 @@
 #define CRV_RELEASE_SAFELY(__POINTER) { [__POINTER release]; __POINTER = nil; }
 
 @interface CRVStompClient()
-@property (nonatomic, assign) NSUInteger port;
-@property (nonatomic, retain) AsyncSocket *socket;
-@property (nonatomic, copy) NSString *host;
+@property (nonatomic, retain) SRWebSocket *webSocket;
+@property (nonatomic, copy) NSString *url;
 @property (nonatomic, copy) NSString *login;
 @property (nonatomic, copy) NSString *passcode;
 @property (nonatomic, copy) NSString *sessionId;
@@ -63,32 +62,29 @@
 @implementation CRVStompClient
 
 @synthesize delegate;
-@synthesize socket, host, port, login, passcode, sessionId;
+@synthesize webSocket, url, login, passcode, sessionId;
 
 - (id)init {
-	return [self initWithHost:@"localhost" port:kStompDefaultPort login:nil passcode:nil delegate:nil];
+	return [self initWithUrl:@"localhost" login:nil passcode:nil delegate:nil];
 }
 
-- (id)initWithHost:(NSString *)theHost 
-			  port:(NSUInteger)thePort 
+- (id)initWithUrl:(NSString *)theUrl
 		  delegate:(id<CRVStompClientDelegate>)theDelegate
 	   autoconnect:(BOOL) autoconnect {
-	if(self = [self initWithHost:theHost port:thePort login:nil passcode:nil delegate:theDelegate autoconnect: NO]) {
+	if(self = [self initWithUrl:theUrl login:nil passcode:nil delegate:theDelegate autoconnect: NO]) {
 		anonymous = YES;
 	}
 	return self;
 }
 
-- (id)initWithHost:(NSString *)theHost 
-			  port:(NSUInteger)thePort 
+- (id)initWithUrl:(NSString *)theUrl 
 			 login:(NSString *)theLogin 
 		  passcode:(NSString *)thePasscode 
 		  delegate:(id<CRVStompClientDelegate>)theDelegate {
-	return [self initWithHost:theHost port:thePort login:theLogin passcode:thePasscode delegate:theDelegate autoconnect: NO];
+	return [self initWithUrl:theUrl login:theLogin passcode:thePasscode delegate:theDelegate autoconnect: NO];
 }
 
-- (id)initWithHost:(NSString *)theHost 
-			  port:(NSUInteger)thePort 
+- (id)initWithUrl:(NSString *)theUrl
 			 login:(NSString *)theLogin 
 		  passcode:(NSString *)thePasscode 
 		  delegate:(id<CRVStompClientDelegate>)theDelegate
@@ -98,20 +94,24 @@
 		anonymous = NO;
 		doAutoconnect = autoconnect;
 		
-		AsyncSocket *theSocket = [[AsyncSocket alloc] initWithDelegate:self];
-		[self setSocket: theSocket];
-		[theSocket release];
+        [self setUrl:theUrl];
+   /*
+        NSMutableURLRequest *pushServerRequest = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:url]];
+        [pushServerRequest setValue:@"websocket" forHTTPHeaderField:@"upgrade"];
+        [pushServerRequest setValue:@"Upgrade" forHTTPHeaderField:@"connection"];
+        webSocket = [[SRWebSocket alloc] initWithURLRequest:pushServerRequest protocols:@[@"hangies"]];
+ */
+        webSocket = [[SRWebSocket alloc] initWithURLRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:url]]];
+        webSocket.delegate = self;
+        //webSocket = theWebSocket;
+		//[theWebSocket release];
+
 		
 		[self setDelegate:theDelegate];
-		[self setHost: theHost];
-		[self setPort: thePort];
 		[self setLogin: theLogin];
 		[self setPasscode: thePasscode];
 		
-		NSError *err;
-		if(![self.socket connectToHost:self.host onPort:self.port error:&err]) {
-			NSLog(@"StompService error: %@", err);
-		}
+		[webSocket open];
 	}
 	return self;
 }
@@ -190,7 +190,8 @@
 
 - (void)disconnect {
 	[self sendFrame:kCommandDisconnect];
-	[[self socket] disconnectAfterReadingAndWriting];
+	[[self webSocket] close];
+    //[[self socket] disconnectAfterReadingAndWriting];
 }
 
 
@@ -209,7 +210,8 @@
 		[frameString appendString:body];
 	}
     [frameString appendString:kControlChar];
-	[[self socket] writeData:[frameString dataUsingEncoding:NSUTF8StringEncoding] withTimeout:kDefaultTimeout tag:123];
+	[[self webSocket] send:[frameString dataUsingEncoding:NSUTF8StringEncoding]];
+    //[[self socket] writeData:[frameString dataUsingEncoding:NSUTF8StringEncoding] withTimeout:kDefaultTimeout tag:123];
 }
 
 - (void) sendFrame:(NSString *) command {
@@ -250,15 +252,15 @@
 }
 
 - (void)readFrame {
-	[[self socket] readDataToData:[AsyncSocket ZeroData] withTimeout:-1 tag:0];
+//	[[self socket] readDataToData:[AsyncSocket ZeroData] withTimeout:-1 tag:0];
 }
 
 #pragma mark -
-#pragma mark AsyncSocketDelegate
+#pragma mark SRWebSocketDelegate
 
-- (void)onSocket:(AsyncSocket *)sock didReadData:(NSData*)data withTag:(long)tag {
-	NSData *strData = [data subdataWithRange:NSMakeRange(0, [data length])];
-	NSString *msg = [[NSString alloc] initWithData:strData encoding:NSUTF8StringEncoding];
+- (void)webSocket:(SRWebSocket *)webSocket didReceiveMessage:(id)message{
+    NSLog(@"didReceiveMessage \n Message: %@", message);
+	/*NSString *msg = message;
     NSMutableArray *contents = (NSMutableArray *)[[msg componentsSeparatedByString:@"\n"] mutableCopy];
 	if([[contents objectAtIndex:0] isEqual:@""]) {
 		[contents removeObjectAtIndex:0];
@@ -287,9 +289,25 @@
 	[msg release];
 	[self receiveFrame:command headers:headers body:body];
 	[self readFrame];
-	[contents release];
+	[contents release];*/
 }
 
+- (void)webSocketDidOpen:(SRWebSocket *)webSocket{
+    NSLog(@"webSocketDidOpen");
+	if(doAutoconnect) {
+		[self connect];
+	}
+}
+- (void)webSocket:(SRWebSocket *)webSocket didFailWithError:(NSError *)error{
+    NSLog(@"didFailWithError");
+    NSLog([error description]);
+}
+- (void)webSocket:(SRWebSocket *)webSocket didCloseWithCode:(NSInteger)code reason:(NSString *)reason wasClean:(BOOL)wasClean{
+    NSLog(@"didCloseWithCode");
+    NSLog(@"reaseon: %@, code: %d",reason, code);
+}
+
+/*
 - (void)onSocket:(AsyncSocket *)sock didConnectToHost:(NSString *)host port:(UInt16)port {
 	if(doAutoconnect) {
 		[self connect];
@@ -310,16 +328,19 @@
 		[[self delegate] stompClientWillDisconnect:self withError:err];
 	}
 }
+*/
 
 #pragma mark -
 #pragma mark Memory management
 -(void) dealloc {
 	delegate = nil;
-	
+    webSocket.delegate = nil;
+	[webSocket release];
+    
 	CRV_RELEASE_SAFELY(passcode);
 	CRV_RELEASE_SAFELY(login);
-	CRV_RELEASE_SAFELY(host);
-	CRV_RELEASE_SAFELY(socket);
+//	CRV_RELEASE_SAFELY(host);
+	CRV_RELEASE_SAFELY(url);
 
 	[super dealloc];
 }

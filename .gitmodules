@@ -1,0 +1,3 @@
+[submodule "thirdparty/SocketRocket"]
+	path = thirdparty/SocketRocket
+	url = https://github.com/square/SocketRocket.git

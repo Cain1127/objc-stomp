@@ -15,7 +15,7 @@
 
 
 #import <Foundation/Foundation.h>
-#import "AsyncSocket.h"
+#import "SRWebSocket.h"
 
 @class CRVStompClient;
 
@@ -35,12 +35,11 @@ typedef enum {
 - (void)serverDidSendError:(CRVStompClient *)stompService withErrorMessage:(NSString *)description detailedErrorMessage:(NSString *) theMessage;
 @end
 
-@interface CRVStompClient : NSObject {
+@interface CRVStompClient : NSObject <SRWebSocketDelegate>{
 	@private
 	id<CRVStompClientDelegate> delegate;
-	AsyncSocket *socket;
-	NSString *host;
-	NSUInteger port;
+	SRWebSocket *webSocket;
+	NSString *url;
 	NSString *login;
 	NSString *passcode;
 	NSString *sessionId;
@@ -50,14 +49,12 @@ typedef enum {
 
 @property (nonatomic, assign) id<CRVStompClientDelegate> delegate;
 
-- (id)initWithHost:(NSString *)theHost 
-			  port:(NSUInteger)thePort 
+- (id)initWithUrl:(NSString *)theUrl
 			 login:(NSString *)theLogin
 		  passcode:(NSString *)thePasscode 
 		  delegate:(id<CRVStompClientDelegate>)theDelegate;
 
-- (id)initWithHost:(NSString *)theHost 
-			  port:(NSUInteger)thePort 
+- (id)initWithUrl:(NSString *)theUrl 
 			 login:(NSString *)theLogin
 		  passcode:(NSString *)thePasscode 
 		  delegate:(id<CRVStompClientDelegate>)theDelegate
@@ -66,8 +63,7 @@ typedef enum {
 /**
  * Connects as an anonymous user. Suppresses "login" and "passcode" headers.
  */
-- (id)initWithHost:(NSString *)theHost 
-			  port:(NSUInteger)thePort 
+- (id)initWithUrl:(NSString *)theUrl 
 		  delegate:(id<CRVStompClientDelegate>)theDelegate
 	   autoconnect:(BOOL) autoconnect;
 
