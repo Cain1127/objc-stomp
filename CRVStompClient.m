@@ -122,7 +122,7 @@
 	if(anonymous) {
 		[self sendFrame:kCommandConnect];
 	} else {
-		NSDictionary *headers = [NSDictionary dictionaryWithObjectsAndKeys: [self login], @"login", [self passcode], @"passcode", nil];
+		NSDictionary *headers = [NSDictionary dictionaryWithObjectsAndKeys: [self login], @"login", [self passcode], @"passcode", @"0,0", @"heart-beat", nil];
 		[self sendFrame:kCommandConnect withHeader:headers andBody: nil];
 	}
 	[self readFrame];
@@ -198,7 +198,7 @@
 #pragma mark -
 #pragma mark PrivateMethods
 - (void) sendFrame:(NSString *) command withHeader:(NSDictionary *) header andBody:(NSString *) body {
-    NSMutableString *frameString = [NSMutableString stringWithString: [command stringByAppendingString:@"\n"]];	
+    NSMutableString *frameString = [NSMutableString stringWithString: [NSString stringWithFormat:@"[\"%@\n", command]];
 	for (id key in header) {
 		[frameString appendString:key];
 		[frameString appendString:@":"];
@@ -210,7 +210,12 @@
 		[frameString appendString:body];
 	}
     [frameString appendString:kControlChar];
-	[[self webSocket] send:[frameString dataUsingEncoding:NSUTF8StringEncoding]];
+    [frameString appendString:@"\"]"];
+    
+	NSLog(@"sendFrame: %@", frameString);
+    
+	//[[self webSocket] send:[NSString stringWithCString:[frameString cStringUsingEncoding:NSISOLatin1StringEncoding] encoding:NSUTF8StringEncoding]];
+	[[self webSocket] send:frameString];
     //[[self socket] writeData:[frameString dataUsingEncoding:NSUTF8StringEncoding] withTimeout:kDefaultTimeout tag:123];
 }
 
@@ -219,7 +224,7 @@
 }
 
 - (void)receiveFrame:(NSString *)command headers:(NSDictionary *)headers body:(NSString *)body {
-	//NSLog(@"receiveCommand '%@' [%@], @%", command, headers, body);
+	NSLog(@"receiveFrame <%@> <%@>, <%@>", command, headers, body);
 	
 	// Connected
 	if([kResponseFrameConnected isEqual:command]) {
@@ -259,9 +264,35 @@
 #pragma mark SRWebSocketDelegate
 
 - (void)webSocket:(SRWebSocket *)webSocket didReceiveMessage:(id)message{
-    NSLog(@"didReceiveMessage \n Message: %@", message);
-	/*NSString *msg = message;
-    NSMutableArray *contents = (NSMutableArray *)[[msg componentsSeparatedByString:@"\n"] mutableCopy];
+    
+    NSString *messageString;
+    
+    if([message isKindOfClass:[NSData class]]){
+        messageString = [[NSString alloc] initWithData:message encoding:NSUTF8StringEncoding];
+    }
+    else{
+        messageString = message;
+    }
+    
+    //NSLog(@"didReceiveMessage \n Message: %@", message);
+	NSString *msg = messageString;
+    
+    NSString *regexPattern = @"([a-zA-Z]{1})([\[\"]{1})(.*)([\"\]]{1})";
+    NSError *error = NULL;
+    NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:regexPattern options:NSRegularExpressionCaseInsensitive error:&error];
+    
+    NSArray* matches = [regex matchesInString:messageString options:0 range:NSMakeRange(0, [messageString length])];
+    for ( NSTextCheckingResult* match in matches )
+    {
+        NSString* matchText = [message substringWithRange:[match range]];
+        NSLog(@"match: %@", matchText);
+        NSRange group1 = [match rangeAtIndex:1];
+        NSRange group2 = [match rangeAtIndex:2];
+        NSLog(@"group1: %@", [message substringWithRange:group1]);
+        NSLog(@"group2: %@", [message substringWithRange:group2]);
+    }
+
+    NSMutableArray *contents = (NSMutableArray *)[[msg componentsSeparatedByString:@"\\n"] mutableCopy];
 	if([[contents objectAtIndex:0] isEqual:@""]) {
 		[contents removeObjectAtIndex:0];
 	}
@@ -286,10 +317,12 @@
 			}
 		}
 	}
+ 
 	[msg release];
 	[self receiveFrame:command headers:headers body:body];
 	[self readFrame];
-	[contents release];*/
+	[contents release];
+    
 }
 
 - (void)webSocketDidOpen:(SRWebSocket *)webSocket{
@@ -304,7 +337,7 @@
 }
 - (void)webSocket:(SRWebSocket *)webSocket didCloseWithCode:(NSInteger)code reason:(NSString *)reason wasClean:(BOOL)wasClean{
     NSLog(@"didCloseWithCode");
-    NSLog(@"reaseon: %@, code: %d",reason, code);
+    NSLog(@"reason: %@, code: %d",reason, code);
 }
 
 /*
