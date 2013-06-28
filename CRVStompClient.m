@@ -95,17 +95,9 @@
 		doAutoconnect = autoconnect;
 		
         [self setUrl:theUrl];
-   /*
-        NSMutableURLRequest *pushServerRequest = [NSMutableURLRequest requestWithURL:[NSURL URLWithString:url]];
-        [pushServerRequest setValue:@"websocket" forHTTPHeaderField:@"upgrade"];
-        [pushServerRequest setValue:@"Upgrade" forHTTPHeaderField:@"connection"];
-        webSocket = [[SRWebSocket alloc] initWithURLRequest:pushServerRequest protocols:@[@"hangies"]];
- */
+
         webSocket = [[SRWebSocket alloc] initWithURLRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:url]]];
         webSocket.delegate = self;
-        //webSocket = theWebSocket;
-		//[theWebSocket release];
-
 		
 		[self setDelegate:theDelegate];
 		[self setLogin: theLogin];
@@ -191,7 +183,6 @@
 - (void)disconnect {
 	[self sendFrame:kCommandDisconnect];
 	[[self webSocket] close];
-    //[[self socket] disconnectAfterReadingAndWriting];
 }
 
 
@@ -212,11 +203,9 @@
     [frameString appendString:kControlChar];
     [frameString appendString:@"\"]"];
     
-	NSLog(@"sendFrame: %@", frameString);
+//	NSLog(@"sendFrame: %@", frameString);
     
-	//[[self webSocket] send:[NSString stringWithCString:[frameString cStringUsingEncoding:NSISOLatin1StringEncoding] encoding:NSUTF8StringEncoding]];
 	[[self webSocket] send:frameString];
-    //[[self socket] writeData:[frameString dataUsingEncoding:NSUTF8StringEncoding] withTimeout:kDefaultTimeout tag:123];
 }
 
 - (void) sendFrame:(NSString *) command {
@@ -224,7 +213,7 @@
 }
 
 - (void)receiveFrame:(NSString *)command headers:(NSDictionary *)headers body:(NSString *)body {
-	NSLog(@"receiveFrame <%@> <%@>, <%@>", command, headers, body);
+	//NSLog(@"receiveFrame <%@> <%@>, <%@>", command, headers, body);
 	
 	// Connected
 	if([kResponseFrameConnected isEqual:command]) {
@@ -274,24 +263,22 @@
         messageString = message;
     }
     
-    //NSLog(@"didReceiveMessage \n Message: %@", message);
-	NSString *msg = messageString;
-    
-    NSString *regexPattern = @"([a-zA-Z]{1})([\[\"]{1})(.*)([\"\]]{1})";
-    NSError *error = NULL;
-    NSRegularExpression *regex = [NSRegularExpression regularExpressionWithPattern:regexPattern options:NSRegularExpressionCaseInsensitive error:&error];
-    
-    NSArray* matches = [regex matchesInString:messageString options:0 range:NSMakeRange(0, [messageString length])];
-    for ( NSTextCheckingResult* match in matches )
-    {
-        NSString* matchText = [message substringWithRange:[match range]];
-        NSLog(@"match: %@", matchText);
-        NSRange group1 = [match rangeAtIndex:1];
-        NSRange group2 = [match rangeAtIndex:2];
-        NSLog(@"group1: %@", [message substringWithRange:group1]);
-        NSLog(@"group2: %@", [message substringWithRange:group2]);
+ //   NSLog(@"didReceiveMessage message: %@",message);
+    NSRange match;
+    NSRange match1;
+    match = [messageString rangeOfString: @"[\""];
+    match1 = [messageString rangeOfString: @"\"]"];
+    NSString *msg = messageString;
+    if(match.location != NSNotFound && match1.location != NSNotFound){
+        msg = [messageString substringWithRange: NSMakeRange (match.location+2, match1.location - (match.location+2))];
     }
-
+    
+    NSRange match2;   
+    match2 = [messageString rangeOfString: @"\\u0000"];
+    if(match2.location != NSNotFound){
+        msg = [msg stringByReplacingOccurrencesOfString:@"\\u0000"
+                                             withString:@""];
+    }
     NSMutableArray *contents = (NSMutableArray *)[[msg componentsSeparatedByString:@"\\n"] mutableCopy];
 	if([[contents objectAtIndex:0] isEqual:@""]) {
 		[contents removeObjectAtIndex:0];
@@ -317,10 +304,13 @@
 			}
 		}
 	}
- 
-	[msg release];
-	[self receiveFrame:command headers:headers body:body];
+    
+  //  [messageString release];
+//	[msg release];
+	
+    [self receiveFrame:command headers:headers body:body];
 	[self readFrame];
+    
 	[contents release];
     
 }
@@ -340,35 +330,24 @@
     NSLog(@"reason: %@, code: %d",reason, code);
 }
 
-/*
-- (void)onSocket:(AsyncSocket *)sock didConnectToHost:(NSString *)host port:(UInt16)port {
-	if(doAutoconnect) {
-		[self connect];
-	}
++ (NSString *)StringFromJSONString:(NSString *)aString {
+	NSMutableString *s = [NSMutableString stringWithString:aString];
+	[s replaceOccurrencesOfString:@"\\\"" withString:@"\"" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	[s replaceOccurrencesOfString:@"\\/" withString:@"/" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	[s replaceOccurrencesOfString:@"\\n" withString:@"\n" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	[s replaceOccurrencesOfString:@"\\b" withString:@"\b" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	[s replaceOccurrencesOfString:@"\\f" withString:@"\f" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	[s replaceOccurrencesOfString:@"\\r" withString:@"\r" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	[s replaceOccurrencesOfString:@"\\t" withString:@"\t" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	return [NSString stringWithString:s];
 }
-
-- (void)onSocket:(AsyncSocket *)sock didWriteDataWithTag:(long)tag {
-}
-
-- (void)onSocketDidDisconnect:(AsyncSocket *)sock {
-	if([[self delegate] respondsToSelector:@selector(stompClientDidDisconnect:)]) {
-		[[self delegate] stompClientDidDisconnect: self];
-	}
-}
-
-- (void)onSocket:(AsyncSocket *)sock willDisconnectWithError:(NSError *)err {
-	if([[self delegate] respondsToSelector:@selector(stompClientWillDisconnect:withError:)]) {
-		[[self delegate] stompClientWillDisconnect:self withError:err];
-	}
-}
-*/
 
 #pragma mark -
 #pragma mark Memory management
 -(void) dealloc {
 	delegate = nil;
     webSocket.delegate = nil;
-	[webSocket release];
+    [webSocket release];
     
 	CRV_RELEASE_SAFELY(passcode);
 	CRV_RELEASE_SAFELY(login);

@@ -60,6 +60,9 @@ typedef enum {
 		  delegate:(id<CRVStompClientDelegate>)theDelegate
 	   autoconnect:(BOOL) autoconnect;
 
++ (NSString *)StringFromJSONString:(NSString *)aString;
+
+    
 /**
  * Connects as an anonymous user. Suppresses "login" and "passcode" headers.
  */
