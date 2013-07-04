@@ -62,7 +62,7 @@
 @implementation CRVStompClient
 
 @synthesize delegate;
-@synthesize webSocket, url, login, passcode, sessionId;
+@synthesize webSocket, url, login, passcode, sessionId, isConnected;
 
 - (id)init {
 	return [self initWithUrl:@"localhost" login:nil passcode:nil delegate:nil];
@@ -95,6 +95,7 @@
 		doAutoconnect = autoconnect;
 		
         [self setUrl:theUrl];
+        isConnected = NO;
 
         webSocket = [[SRWebSocket alloc] initWithURLRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:url]]];
         webSocket.delegate = self;
@@ -221,6 +222,8 @@
 			[[self delegate] stompClientDidConnect:self];
 		}
 		
+        isConnected = YES;
+        
 		// store session-id
 		NSString *sessId = [headers valueForKey:kResponseHeaderSession];
 		[self setSessionId: sessId];
@@ -324,10 +327,12 @@
 - (void)webSocket:(SRWebSocket *)webSocket didFailWithError:(NSError *)error{
     NSLog(@"didFailWithError");
     NSLog([error description]);
+    isConnected = NO;
 }
 - (void)webSocket:(SRWebSocket *)webSocket didCloseWithCode:(NSInteger)code reason:(NSString *)reason wasClean:(BOOL)wasClean{
     NSLog(@"didCloseWithCode");
     NSLog(@"reason: %@, code: %d",reason, code);
+    isConnected = NO;
 }
 
 + (NSString *)StringFromJSONString:(NSString *)aString {

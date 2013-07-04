@@ -36,6 +36,7 @@ typedef enum {
 @end
 
 @interface CRVStompClient : NSObject <SRWebSocketDelegate>{
+	BOOL isConnected;
 	@private
 	id<CRVStompClientDelegate> delegate;
 	SRWebSocket *webSocket;
@@ -48,6 +49,7 @@ typedef enum {
 }
 
 @property (nonatomic, assign) id<CRVStompClientDelegate> delegate;
+@property (atomic) BOOL isConnected;
 
 - (id)initWithUrl:(NSString *)theUrl
 			 login:(NSString *)theLogin
