@@ -319,14 +319,14 @@
 }
 
 - (void)webSocketDidOpen:(SRWebSocket *)webSocket{
-    NSLog(@"webSocketDidOpen");
+    //NSLog(@"webSocketDidOpen");
 	if(doAutoconnect) {
 		[self connect];
 	}
 }
 - (void)webSocket:(SRWebSocket *)webSocket didFailWithError:(NSError *)error{
     NSLog(@"didFailWithError");
-    NSLog([error description]);
+    NSLog(@"error: %@", [error description]);
     isConnected = NO;
 }
 - (void)webSocket:(SRWebSocket *)webSocket didCloseWithCode:(NSInteger)code reason:(NSString *)reason wasClean:(BOOL)wasClean{
