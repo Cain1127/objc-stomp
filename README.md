@@ -1,16 +1,16 @@
-STOMP client for Objective-C
-============================
+STOMP client for Objective-C over WebSockets
+============================================
 
-This is a simple STOMP client based on
 
-* an initial implementation (StompService) from Scott Raymond <sco@scottraymond.net> (see [http://gist.github.com/72935](http://gist.github.com/72935))
-* and AsynSocket: [http://code.google.com/p/cocoaasyncsocket/](http://code.google.com/p/cocoaasyncsocket/)
 
+This is a simple STOMP client that works over websockets, it is an adaptation of objc-stomp library that works over sockets.
+
+It uses the SocketRocket library.
 
 Usage
 -----
 
-Add AsynSocket.{h,m} and CRVStompClient.{h,m} to your project.
+Add CRVStompClient.{h,m} to your project, and add the library SocketRocket.
 
 MyExample.h
 
@@ -82,3 +82,4 @@ Contributors
 * Stefan Saasen
 * Graham Haworth
 * jbg
+* [Néstor Malet](https://github.com/nmaletm)
