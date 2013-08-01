@@ -205,7 +205,6 @@
     [frameString appendString:@"\"]"];
     
 //	NSLog(@"sendFrame: %@", frameString);
-    
 	[[self webSocket] send:frameString];
 }
 
@@ -257,14 +256,17 @@
 
 - (void)webSocket:(SRWebSocket *)webSocket didReceiveMessage:(id)message{
     
-    NSString *messageString;
+    NSMutableString *messageString;
     
     if([message isKindOfClass:[NSData class]]){
-        messageString = [[NSString alloc] initWithData:message encoding:NSUTF8StringEncoding];
+        messageString = [[NSMutableString alloc] initWithData:message encoding:NSUTF8StringEncoding];
     }
     else{
-        messageString = message;
+        messageString = [message mutableCopy];
     }
+    
+    [messageString replaceOccurrencesOfString:@"\\\\n" withString:@"{[EOL]}" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [messageString length])];
+
     
  //   NSLog(@"didReceiveMessage message: %@",message);
     NSRange match;
@@ -294,6 +296,10 @@
 	for(NSString *line in contents) {
 		if(hasHeaders) {
 			[body appendString:line];
+            if(line != [contents lastObject]){
+                //[body appendString:@"\\r\\n"];
+                [body appendString:@" "];
+            }
 		} else {
 			if ([line isEqual:@""]) {
 				hasHeaders = YES;
@@ -307,10 +313,9 @@
 			}
 		}
 	}
+    [body replaceOccurrencesOfString:@"{[EOL]}" withString:@"\\\\n" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [body length])];
+	//[body replaceOccurrencesOfString:@"{[EOL]}" withString:@" " options:NSCaseInsensitiveSearch range:NSMakeRange(0, [body length])];
     
-  //  [messageString release];
-//	[msg release];
-	
     [self receiveFrame:command headers:headers body:body];
 	[self readFrame];
     
@@ -330,20 +335,28 @@
     isConnected = NO;
 }
 - (void)webSocket:(SRWebSocket *)webSocket didCloseWithCode:(NSInteger)code reason:(NSString *)reason wasClean:(BOOL)wasClean{
-    NSLog(@"didCloseWithCode");
-    NSLog(@"reason: %@, code: %d",reason, code);
     isConnected = NO;
+
+    if(code != 0){
+        NSLog(@"didCloseWithCode");
+        NSLog(@"reason: %@, code: %d",reason, code);
+    }
+    
+    if([[self delegate] respondsToSelector:@selector(serverDidClose:withReason:)]) {
+        [[self delegate] serverDidClose:self withReason: reason];
+    }
 }
 
-+ (NSString *)StringFromJSONString:(NSString *)aString {
++ (NSString *)stringFromJSONString:(NSString *)aString {
 	NSMutableString *s = [NSMutableString stringWithString:aString];
+	[s replaceOccurrencesOfString:@"\\\\" withString:@"\\" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
 	[s replaceOccurrencesOfString:@"\\\"" withString:@"\"" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
 	[s replaceOccurrencesOfString:@"\\/" withString:@"/" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
-	[s replaceOccurrencesOfString:@"\\n" withString:@"\n" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
-	[s replaceOccurrencesOfString:@"\\b" withString:@"\b" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
-	[s replaceOccurrencesOfString:@"\\f" withString:@"\f" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
-	[s replaceOccurrencesOfString:@"\\r" withString:@"\r" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
-	[s replaceOccurrencesOfString:@"\\t" withString:@"\t" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	//[s replaceOccurrencesOfString:@"\\n" withString:@"\n" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	//[s replaceOccurrencesOfString:@"\\b" withString:@"\b" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	//[s replaceOccurrencesOfString:@"\\f" withString:@"\f" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	//[s replaceOccurrencesOfString:@"\\r" withString:@"\r" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	//[s replaceOccurrencesOfString:@"\\t" withString:@"\t" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
 	return [NSString stringWithString:s];
 }
 

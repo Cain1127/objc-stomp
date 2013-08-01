@@ -33,6 +33,7 @@ typedef enum {
 - (void)stompClientDidConnect:(CRVStompClient *)stompService;
 - (void)serverDidSendReceipt:(CRVStompClient *)stompService withReceiptId:(NSString *)receiptId;
 - (void)serverDidSendError:(CRVStompClient *)stompService withErrorMessage:(NSString *)description detailedErrorMessage:(NSString *) theMessage;
+- (void)serverDidClose:(CRVStompClient *)stompService withReason:(NSString *)reason;
 @end
 
 @interface CRVStompClient : NSObject <SRWebSocketDelegate>{
@@ -62,7 +63,7 @@ typedef enum {
 		  delegate:(id<CRVStompClientDelegate>)theDelegate
 	   autoconnect:(BOOL) autoconnect;
 
-+ (NSString *)StringFromJSONString:(NSString *)aString;
++ (NSString *)stringFromJSONString:(NSString *)aString;
 
     
 /**
