@@ -1,11 +1,9 @@
-STOMP client for Objective-C over WebSockets
+STOMP client for Objective-C over WebSocket
 ============================================
 
+objc-stomp/WebSocket is a simple [STOMP](http://stomp.github.io) client that works over [WebSocket](http://www.websocket.org). It is an adaptation of the TCP-socket-based [objc-stomp](https://github.com/juretta/objc-stomp) library (which in-turn uses the [AsyncSocket](https://github.com/robbiehanson/CocoaAsyncSocket) library.)
 
-
-This is a simple STOMP client that works over websockets, it is an adaptation of objc-stomp library that works over sockets.
-
-It uses the SocketRocket library.
+objc-stomp/WebSocket uses the [SocketRocket](https://github.com/square/SocketRocket) library.
 
 Usage
 -----
