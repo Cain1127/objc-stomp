@@ -28,7 +28,8 @@
 #define kCommandAbort				@"ABORT"
 #define kCommandAck					@"ACK"
 #define kCommandDisconnect			@"DISCONNECT"
-#define	kControlChar				[NSString stringWithFormat:@"\n%C", 0] // TODO -> static
+#define	kControlChar				[NSString stringWithFormat:@"%C", 0] // TODO -> static
+//#define	kControlChar				[NSString stringWithFormat:@"\n%C", 0] // TODO -> static
 
 #define kAckClient					@"client"
 #define kAckAuto					@"auto"
@@ -127,6 +128,10 @@
 
 - (void)sendMessage:(NSString *)theMessage toDestination:(NSString *)destination withHeaders:(NSDictionary*)headers {
 	NSMutableDictionary *allHeaders = [NSMutableDictionary dictionaryWithDictionary:headers];
+    if(theMessage){
+        NSString *content = [CRVStompClient stringFromJSONString:theMessage];
+        [allHeaders setValue:[NSString stringWithFormat:@"%lu",strlen([content UTF8String])] forKey:@"content-length"];
+    }
     [allHeaders setValue:destination forKey:@"destination"];
     [self sendFrame:kCommandSend withHeader:allHeaders andBody:theMessage];
 }
@@ -197,14 +202,16 @@
 		[frameString appendString:[header objectForKey:key]];
 		[frameString appendString:@"\n"];
 	}
+    [frameString appendString:@"\n"];
 	if (body) {
-		[frameString appendString:@"\n"];
 		[frameString appendString:body];
 	}
     [frameString appendString:kControlChar];
     [frameString appendString:@"\"]"];
     
-//	NSLog(@"sendFrame: %@", frameString);
+//	NSLog(@"sendFrame: %@", frameString);kControlChar
+//    NSLog(@"sendFrame (raw): %@", [[frameString stringByReplacingOccurrencesOfString:kControlChar withString:@"\\u0000"] stringByReplacingOccurrencesOfString:@"\n" withString:@"\\n"]);
+
 	[[self webSocket] send:frameString];
 }
 
@@ -357,6 +364,20 @@
 	//[s replaceOccurrencesOfString:@"\\f" withString:@"\f" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
 	//[s replaceOccurrencesOfString:@"\\r" withString:@"\r" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
 	//[s replaceOccurrencesOfString:@"\\t" withString:@"\t" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	return [NSString stringWithString:s];
+}
+
++ (NSString *)stringToJSONString:(NSString *)aString {
+	NSMutableString *s = [NSMutableString stringWithString:aString];
+	[s replaceOccurrencesOfString:@"\\" withString:@"\\\\" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	[s replaceOccurrencesOfString:@"\"" withString:@"\\\"" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	[s replaceOccurrencesOfString:@"/" withString:@"\\/" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	//[s replaceOccurrencesOfString:@"\\n" withString:@"\n" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	//[s replaceOccurrencesOfString:@"\\b" withString:@"\b" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	//[s replaceOccurrencesOfString:@"\\f" withString:@"\f" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	//[s replaceOccurrencesOfString:@"\\r" withString:@"\r" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+	//[s replaceOccurrencesOfString:@"\\t" withString:@"\t" options:NSCaseInsensitiveSearch range:NSMakeRange(0, [s length])];
+    
 	return [NSString stringWithString:s];
 }
 

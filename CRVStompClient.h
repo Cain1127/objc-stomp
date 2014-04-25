@@ -64,7 +64,7 @@ typedef enum {
 	   autoconnect:(BOOL) autoconnect;
 
 + (NSString *)stringFromJSONString:(NSString *)aString;
-
++ (NSString *)stringToJSONString:(NSString *)aString;
     
 /**
  * Connects as an anonymous user. Suppresses "login" and "passcode" headers.
